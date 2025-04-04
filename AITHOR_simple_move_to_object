@@ -1,0 +1,116 @@
+from ai2thor.controller import Controller
+import math
+import time
+
+# Initialize the controller
+controller = Controller(
+    agentMode="locobot",  # Define the agent mode (locobot for this example)
+    visibilityDistance=5.0,  # How far the agent can see
+    scene="FloorPlan10",  # Choose a scene to load
+    movementGaussianSigma=0.005,  # Movement noise
+    rotateGaussianSigma=0.5,  # Rotation noise
+    renderDepthImage=False,  # Option to render depth images
+    renderInstanceSegmentation=False,  # Option to render instance segmentation
+    width=300,  # Image width for rendering
+    height=300,  # Image height for rendering
+    fieldOfView=60,  # Camera field of view in degrees
+    use_gpu=True,  # Use GPU for rendering
+    gridSize=0.05,  # Step sizes
+    snapToGrid=False,
+    rotateStepDegrees=10
+)
+
+# Load a scene (e.g., kitchen)
+controller.reset('FloorPlan5')
+
+# Get the agent's initial position
+agent_position = controller.last_event.metadata['agent']['position']
+print(f"Initial Agent Position: {agent_position}")
+
+# Target object (e.g., an apple)
+target_object = "Apple"
+
+# Find the object in the scene
+objects = controller.last_event.metadata['objects']
+target_object_position = None
+
+for obj in objects:
+    if obj['objectType'] == target_object:
+        target_object_position = obj['position']
+        break
+
+if target_object_position:
+    print(f"Target Object Position: {target_object_position}")
+else:
+    print("Target object not found.")
+
+# Example of small steps navigation towards the object
+def navigate_to_target_with_small_steps():
+    while True:
+        agent_position = controller.last_event.metadata['agent']['position']
+        
+        # Calculate the distance from the agent to the target
+        distance = math.sqrt(
+            (target_object_position['x'] - agent_position['x']) ** 2 +
+            (target_object_position['z'] - agent_position['z']) ** 2
+        )
+
+        if distance < 1.0:  # Close enough to the object
+            print("Reached the object!")
+            break
+
+        # Calculate angle to the target object
+        angle_to_target = math.atan2(target_object_position['z'] - agent_position['z'],
+                                     target_object_position['x'] - agent_position['x'])
+
+        # Get the agent's current rotation (yaw)
+        agent_yaw = controller.last_event.metadata['agent']['rotation']['y']
+        
+        # Calculate the difference between current yaw and the target angle
+        angle_difference = angle_to_target - math.radians(agent_yaw)
+        
+        # Normalize the angle difference to be within -180 to 180 degrees
+        while angle_difference > math.pi:
+            angle_difference -= 2 * math.pi
+        while angle_difference < -math.pi:
+            angle_difference += 2 * math.pi
+
+        # Rotate to face the target (small steps)
+        if abs(angle_difference) > 0.1:  # If not facing the target, rotate slowly	
+            if angle_difference > 0:
+                controller.step('RotateRight')
+                print(angle_difference)
+                time.sleep(0.1)
+            else:
+                controller.step('RotateLeft')
+                print(angle_difference)
+                time.sleep(0.1)
+        else:
+        	print("Facing the object.")
+        	time.sleep(3.0)
+        	break	
+'''	
+        # Check reachable positions and move forward if it's safe
+        # reachable_positions = controller.get_reachable_positions()
+        reachable_positions = controller.step(
+    		action="GetReachablePositions"
+	).metadata["actionReturn"]
+
+        # Check if the current position is reachable or not
+        if reachable_positions:
+            # Move towards the target using small steps
+            controller.step('MoveAhead')
+            time.sleep(0.5)
+        else:
+            # If the next position is not reachable (collision), try another direction
+            print("Next position is not reachable, trying a different direction.")
+            controller.step('RotateRight')  # Or RotateLeft based on preference
+            time.sleep(0.1)  # Wait before trying again
+
+        # Add a small delay to simulate time between steps
+        # time.sleep(0.5)
+'''
+navigate_to_target_with_small_steps()
+
+# Step 8: Start navigation
+navigate_to_target(agent, target_coordinates)
