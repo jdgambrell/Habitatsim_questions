@@ -1,2 +1,2 @@
-# Habitatsim_questions
-Some files for reference when asking questions about Habitat-sim implementation. Delete after use.
+# Robotics_project
+Scripts for various robotics projects 2024-2025
